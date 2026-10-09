@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Daily Telegram Watch</title>
+<style>
+  :root{
+    --paper:#fbfaf5;
+    --paper-2:#f4f1e7;
+    --ink:#1f2528;
+    --muted:#6d726f;
+    --gold:#a58a32;
+    --gold-2:#c7b568;
+    --line:#ded8c5;
+    --navy:#172128;
+    --red:#a84b3f;
+    --amber:#a47a20;
+    --green:#55745b;
+    --blue:#4a6675;
+    --shadow:0 16px 40px rgba(24,31,34,.10);
+  }
+
+  *{box-sizing:border-box}
+  html{background:#e9e7df;color:var(--ink)}
+  body{margin:0;font-family:"Courier New",Courier,monospace;background:#e9e7df;color:var(--ink)}
+  button,input,textarea{font:inherit}
+
+  .app{min-height:100vh;display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr)}
+  .controls{position:sticky;top:0;height:100vh;overflow:auto;padding:22px;background:var(--navy);color:#f4f1e7;border-right:1px solid #0d1418}
+  .brand-mini{font-size:11px;letter-spacing:.14em;color:var(--gold-2);font-weight:700;text-transform:uppercase;margin-bottom:8px}
+  .controls h1{font-size:23px;line-height:1.05;margin:0 0 9px;text-transform:uppercase;letter-spacing:.02em}
+  .controls p{font-size:12px;line-height:1.55;color:#c7c9c8;margin:0 0 18px}
+  .label{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#d6d1bf;margin:15px 0 6px}
+  .label span:last-child{color:#818c91;letter-spacing:0;text-transform:none}
+  textarea{width:100%;min-height:46vh;resize:vertical;border:1px solid #3b464c;border-radius:3px;padding:12px;background:#0e171c;color:#e9e6da;line-height:1.45;font-size:12px;outline:none}
+  textarea:focus{border-color:var(--gold-2);box-shadow:0 0 0 1px var(--gold-2)}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  input{width:100%;border:1px solid #3b464c;border-radius:3px;padding:9px 10px;background:#0e171c;color:#e9e6da;outline:none;font-size:12px}
+  input:focus{border-color:var(--gold-2)}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  button{border:1px solid #536067;background:#26343c;color:white;padding:10px 11px;border-radius:3px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.03em}
+  button:hover{filter:brightness(1.08)}
+  button.primary{background:var(--gold);border-color:var(--gold);color:#13181b}
+  button.wide{grid-column:1 / -1}
+  .hint{font-size:10px;line-height:1.45;color:#8e999d;margin-top:10px}
+
+  .workspace{padding:28px;overflow:auto}
+  .sheet{max-width:1020px;margin:0 auto;background:var(--paper);box-shadow:var(--shadow);border:1px solid #d8d2bf;min-height:calc(100vh - 56px)}
+  .sheet-inner{padding:28px 34px 36px}
+
+  .topline{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;border-bottom:1px solid var(--line);padding-bottom:13px}
+  .eyebrow{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:#4a4f4e;margin-bottom:7px}
+  .title{font-size:29px;line-height:1;margin:0;text-transform:uppercase;letter-spacing:.01em}
+  .subtitle{font-size:12px;margin-top:7px;color:var(--muted);line-height:1.45}
+  .ticker-stamp{flex:0 0 auto;border:1px solid var(--gold);padding:7px 9px 6px;color:var(--gold);font-size:10px;letter-spacing:.10em;text-transform:uppercase;font-weight:700;background:#fffdf5}
+
+  .ticker-bar{margin:14px 0 16px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:11px;background:var(--navy);color:#f5f1e6;padding:8px 10px;border-left:4px solid var(--gold)}
+  .ticker-bar b{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-2)}
+  .ticker-bar .crawl{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ticker-bar .time{font-size:10px;color:#bfc6c9}
+
+  .report-meta{display:grid;grid-template-columns:1.15fr 1.2fr .9fr .8fr;gap:1px;background:var(--line);border:1px solid var(--line);margin:0 0 18px}
+  .meta-box{background:var(--paper);padding:9px 10px;min-height:52px}
+  .meta-k{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#858379;font-weight:700;margin-bottom:5px}
+  .meta-v{font-size:11px;line-height:1.35;font-weight:700}
+
+  .notice{border:1px solid #ddcf96;background:#fffdf3;padding:10px 12px;margin-bottom:19px;border-left:3px solid var(--gold)}
+  .notice strong{display:block;color:#826e21;font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+  .notice span{display:block;font-size:10px;line-height:1.5;color:#555b59}
+
+  .summary{margin:0 0 18px;padding:13px 14px;border:1px solid var(--line);background:#f8f6ed}
+  .summary h2,.section h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 9px;color:#2a3032}
+  .summary-body{font-size:12px;line-height:1.58}
+
+  .section{border-top:1px solid var(--line);padding:15px 0 4px;break-inside:avoid-page}
+  .section-head{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin-bottom:8px}
+  .section-num{min-width:34px;color:var(--gold);font-size:17px;line-height:1;font-weight:700}
+  .section-title{font-size:14px;line-height:1.2;font-weight:700;text-transform:uppercase}
+  .section-content{font-size:11.5px;line-height:1.56}
+  .section-content p{margin:0 0 8px}
+  .section-content ul{margin:3px 0 9px 18px;padding:0}
+  .section-content li{margin:0 0 4px}
+  .subhead{font-size:10px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;color:#555e5f;margin:12px 0 5px}
+  .kv{display:grid;grid-template-columns:105px 1fr;gap:8px;margin:2px 0 5px;font-size:10.5px}
+  .kv .k{color:#777d7a;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .kv .v{font-weight:700}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 10px}
+  .tag{border:1px solid #d5d0c0;background:#fffdf7;padding:2px 6px;border-radius:999px;font-size:9px;line-height:1.4;text-transform:uppercase;letter-spacing:.03em}
+  .tag.high,.tag.very-high{border-color:#c49f9a;color:#7f3028;background:#fff7f5}
+  .tag.medium-high,.tag.medium{border-color:#d5c08a;color:#755f20;background:#fffaf0}
+  .tag.low,.tag.baseline{border-color:#b9c7bd;color:#47614d;background:#f7fbf7}
+  .tag.status{border-color:#b9c6cb;color:#405964;background:#f7fbfc}
+
+  a{color:#315f72;text-decoration:none;border-bottom:1px dotted #7392a0;word-break:break-all}
+  a:hover{color:#153f50}
+  .url-list{margin:4px 0 10px;display:grid;gap:5px}
+  .url-item{padding:7px 8px;border-left:2px solid #b7aa75;background:#f6f3e8;font-size:9.5px;line-height:1.4}
+
+  .footer{margin-top:24px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;font-size:8.5px;color:#757a77;line-height:1.45}
+  .empty{padding:80px 30px;text-align:center;color:#777d7a}
+  .empty b{display:block;color:#32383a;font-size:14px;margin-bottom:8px;text-transform:uppercase}
+
+  @media (max-width:980px){
+    .app{grid-template-columns:1fr}
+    .controls{position:relative;height:auto}
+    .workspace{padding:14px}
+    .sheet-inner{padding:22px}
+    .report-meta{grid-template-columns:1fr 1fr}
+  }
+
+  body.printing .controls{display:none!important}
+  body.printing .workspace{background:white!important}
+
+  @page{size:A4;margin:11mm 11mm 13mm}
+  @media print{
+    html,body{background:white!important}
+    body{font-family:"Courier New",Courier,monospace!important}
+    .controls{display:none!important}
+    .app{display:block!important}
+    .workspace{display:block!important;padding:0!important;margin:0!important;overflow:visible!important;background:white!important}
+    .sheet{display:block!important;width:100%!important;max-width:none!important;margin:0!important;box-shadow:none!important;border:0!important;min-height:0!important;background:white!important;color:#1f2528!important}
+    .sheet-inner{display:block!important;width:100%!important;padding:0!important;background:white!important;color:#1f2528!important}
+    .ticker-bar{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .notice,.summary,.tag,.url-item,.ticker-stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .section{break-inside:auto}
+    .section-head,.kv,.url-item{break-inside:avoid}
+    a{color:#000!important;border:0!important}
+    .footer{position:static}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="controls">
+    <div class="brand-mini">Magic Paws // Quick Product</div>
+    <h1>Daily Telegram Watch</h1>
+    <p>Telegram-/OSINT-Text einkopieren, als schnellen Ticker setzen und anschließend als PDF sowie Markdown ausgeben.</p>
+
+    <div class="label"><span>Ticker-Text</span><span>Code-Fences werden entfernt</span></div>
+    <textarea id="input" spellcheck="false" placeholder="Hier den täglichen Telegram-Watch-Text einfügen …"></textarea>
+
+    <div class="meta-grid">
+      <div>
+        <div class="label"><span>Datum</span><span>auto</span></div>
+        <input id="dateField" type="date" />
+      </div>
+      <div>
+        <div class="label"><span>Stand</span><span>optional</span></div>
+        <input id="timeField" type="text" placeholder="06:00 CEST" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary wide" id="renderBtn">Vorschau aktualisieren</button>
+      <button id="pasteBtn">Aus Zwischenablage</button>
+      <button id="copyBtn">Text kopieren</button>
+      <button id="mdBtn">.MD herunterladen</button>
+      <button id="pdfBtn">PDF erstellen</button>
+      <button class="wide" id="clearBtn">Leeren</button>
+    </div>
+    <div class="hint">PDF: Der Button öffnet eine saubere, eigenständige Druckansicht ohne Eingabefeld/Seitenlayout. Dort „Als PDF speichern“ wählen. Dadurch wird die zuvor leere PDF vermieden.</div>
+  </aside>
+
+  <main class="workspace">
+    <article class="sheet" id="sheet">
+      <div class="sheet-inner" id="report">
+        <div class="empty"><b>Daily Telegram Watch</b>Text links einfügen und „Vorschau aktualisieren“ wählen.</div>
+      </div>
+    </article>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const input = $('#input');
+  const report = $('#report');
+  const dateField = $('#dateField');
+  const timeField = $('#timeField');
+
+  const MONTHS = {JAN:'01',FEB:'02',MAR:'03',APR:'04',MAY:'05',JUN:'06',JUL:'07',AUG:'08',SEP:'09',OCT:'10',NOV:'11',DEC:'12',JANUAR:'01',FEBRUAR:'02',MÄRZ:'03',MAERZ:'03',APRIL:'04',MAI:'05',JUNI:'06',JULI:'07',AUGUST:'08',SEPTEMBER:'09',OKTOBER:'10',NOVEMBER:'11',DEZEMBER:'12'};
+
+  function esc(s='') { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])); }
+  function cleanRaw(raw='') {
+    let s = raw.replace(/^\s*```(?:text|txt|markdown|md)?\s*/i,'').replace(/\s*```\s*$/,'');
+    return s.replace(/\r\n/g,'\n').replace(/\u00a0/g,' ').trim();
+  }
+  function detectDate(text) {
+    const iso = text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
+    if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+    const m = text.toUpperCase().match(/\b(\d{1,2})\s+(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC|JANUAR|FEBRUAR|MÄRZ|MAERZ|APRIL|MAI|JUNI|JULI|AUGUST|SEPTEMBER|OKTOBER|NOVEMBER|DEZEMBER)\s+(20\d{2})\b/);
+    if (m) return `${m[3]}-${MONTHS[m[2]]}-${String(m[1]).padStart(2,'0')}`;
+    return '';
+  }
+  function detectTime(text) {
+    const m = text.match(/\b(\d{2}:\d{2})\s*(CEST|CET|MESZ|MEZ|UTC)?\b/i);
+    return m ? `${m[1]}${m[2] ? ' ' + m[2].toUpperCase() : ''}` : '';
+  }
+  function fmtDate(iso) {
+    if (!iso) return '–';
+    const [y,m,d] = iso.split('-');
+    return `${d}.${m}.${y}`;
+  }
+  function filename(ext) {
+    const d = dateField.value || detectDate(cleanRaw(input.value)) || new Date().toISOString().slice(0,10);
+    return `Daily_Telegram_Watch_${d}.${ext}`;
+  }
+  function linkify(text) {
+    const parts = esc(text).split(/(https?:\/\/[^\s<]+)/g);
+    return parts.map(p => /^https?:\/\//.test(p) ? `<a href="${p.replace(/&amp;/g,'&')}" target="_blank" rel="noopener">${p}</a>` : p).join('');
+  }
+  function stripSeparator(line) { return /^[-=]{8,}$/.test(line.trim()); }
+  function isMainHeading(line) {
+    return /^\d{2}\s*\|\s*/.test(line) || /^(EXECUTIVE SUMMARY|OVERALL ASSESSMENT|FINAL ASSESSMENT|TELEGRAM \/ OSINT SOURCE CHECK|TELEGRAM OSINT|SOURCE COVERAGE|WATCH ASSESSMENT|NEW SOURCE DISCOVERY|OTHER EUROPEAN SEA AREAS)$/i.test(line.trim());
+  }
+  function isSubheading(line) {
+    const t=line.trim();
+    return /^(ASSESSMENT|BACKGROUND|UPDATE|FOLLOW-UP|FOLLOW-UP RECOMMENDED|SOURCES?|SOURCE ASSESSMENT|ATTRIBUTION|IMPORTANT|IMPORTANT DISCREPANCY|IMPORTANT DATA DISCREPANCY|NEW INFORMATION(?:\s*[-–—].*)?|VESSEL|VOYAGE|CARGO|LOCATION|CASUALTIES|EVENT|RELIABILITY|RECOMMENDED CHECK|PUBLICLY RECOVERABLE MATERIAL|NOTABLE TELEGRAM FINDING|WATCH PRIORITY)$/i.test(t) || (/^[A-ZÄÖÜ0-9][A-ZÄÖÜ0-9 /&+().:'’\-]{3,}$/.test(t) && t.length < 74 && !/^https?:/.test(t));
+  }
+  function parse(text) {
+    const lines = text.split('\n').map(x=>x.trimEnd());
+    const out=[];
+    let current={title:'',num:'',lines:[]};
+    let header=[];
+    let started=false;
+    for(const raw of lines){
+      const line=raw.trim();
+      if(!line || stripSeparator(line)) { if(started) current.lines.push(''); else header.push(''); continue; }
+      if(isMainHeading(line)){
+        if(started && (current.title || current.lines.some(Boolean))) out.push(current);
+        const m=line.match(/^(\d{2})\s*\|\s*(.*)$/);
+        current={title:m?m[2]:line,num:m?m[1]:'',lines:[]}; started=true;
+      } else if(!started){ header.push(line); }
+      else current.lines.push(line);
+    }
+    if(started && (current.title || current.lines.some(Boolean))) out.push(current);
+    return {header,sections:out};
+  }
+  function findHeaderValue(header, keys){
+    for(const line of header){
+      for(const key of keys){
+        const re=new RegExp('^'+key+'\\s*:?\\s*(.*)$','i');
+        const m=line.match(re); if(m && m[1]) return m[1].trim();
+      }
+    }
+    return '';
+  }
+  function getPriority(lines){
+    const l=lines.find(x=>/^PRIORITY\s*:/i.test(x));
+    return l?l.split(':').slice(1).join(':').trim():'';
+  }
+  function getStatus(lines){
+    const l=lines.find(x=>/^STATUS\s*:/i.test(x));
+    return l?l.split(':').slice(1).join(':').trim():'';
+  }
+  function tagClass(v){
+    const s=v.toLowerCase().replace(/\s+/g,'-');
+    if(s.includes('very-high')) return 'very-high';
+    if(s.includes('high')) return s.includes('medium')?'medium-high':'high';
+    if(s.includes('medium')) return 'medium';
+    if(s.includes('low')) return 'low';
+    if(s.includes('baseline')) return 'baseline';
+    return '';
+  }
+  function linesToHtml(lines){
+    let html='', listOpen=false, para=[];
+    const flushPara=()=>{ if(para.length){ html += `<p>${linkify(para.join(' '))}</p>`; para=[]; } };
+    const closeList=()=>{ if(listOpen){html+='</ul>';listOpen=false;} };
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i].trim();
+      if(!line){ flushPara(); closeList(); continue; }
+      const kv=line.match(/^(PRIORITY|CATEGORY|STATUS|FLAG|IMO|BUILT|DWT|LENGTH|CREW|NATIONALITY|ORIENTATION|SOURCE CLASS|RECOMMENDED PRIORITY)\s*:\s*(.*)$/i);
+      if(kv){ flushPara(); closeList(); html += `<div class="kv"><div class="k">${esc(kv[1])}</div><div class="v">${linkify(kv[2])}</div></div>`; continue; }
+      if(/^https?:\/\//i.test(line)){
+        flushPara(); closeList(); html += `<div class="url-list"><div class="url-item">${linkify(line)}</div></div>`; continue;
+      }
+      if(isSubheading(line) && !/^PRIORITY|CATEGORY|STATUS/i.test(line)){
+        flushPara(); closeList(); html += `<div class="subhead">${esc(line)}</div>`; continue;
+      }
+      if(/^[•*-]\s+/.test(line)){
+        flushPara(); if(!listOpen){html+='<ul>';listOpen=true;} html += `<li>${linkify(line.replace(/^[•*-]\s+/,''))}</li>`; continue;
+      }
+      if(/^\d+\.\s+/.test(line)){
+        flushPara(); if(!listOpen){html+='<ul>';listOpen=true;} html += `<li>${linkify(line)}</li>`; continue;
+      }
+      if(listOpen) closeList();
+      para.push(line);
+    }
+    flushPara(); closeList();
+    return html;
+  }
+  function summaryText(section){ return section ? section.lines.filter(x=>x && !/^(PRIORITY|CATEGORY|STATUS)\s*:/i.test(x)).slice(0,12).join(' ') : ''; }
+
+  function render(){
+    const text=cleanRaw(input.value);
+    if(!text){ report.innerHTML='<div class="empty"><b>Daily Telegram Watch</b>Text links einfügen und „Vorschau aktualisieren“ wählen.</div>'; return; }
+    if(!dateField.value) dateField.value=detectDate(text);
+    if(!timeField.value) timeField.value=detectTime(text);
+
+    const parsed=parse(text);
+    const h=parsed.header;
+    const date=dateField.value || detectDate(text);
+    const time=timeField.value || detectTime(text) || '–';
+    const coverage=findHeaderValue(h,['Coverage','AREA','AREAS']) || h.find(x=>/North Sea|Baltic|Black Sea/i.test(x)) || 'Europe / Maritime OSINT';
+    const period=findHeaderValue(h,['REPORTING PERIOD','Reporting period']) || 'Daily watch';
+    const mainSummary=parsed.sections.find(s=>/EXECUTIVE SUMMARY|OVERALL ASSESSMENT/i.test(s.title));
+    const contentSections=parsed.sections.filter(s=>s!==mainSummary);
+    const highCount=contentSections.filter(s=>/high/i.test(getPriority(s.lines))).length;
+    const firstHot=contentSections.find(s=>/very high|high/i.test(getPriority(s.lines))) || contentSections[0];
+    const crawl=firstHot ? `${firstHot.num ? firstHot.num+' / ' : ''}${firstHot.title}` : 'Public Telegram / OSINT monitoring';
+
+    let html=`
+      <header class="topline">
+        <div>
+          <div class="eyebrow">Magic Paws // Maritime OSINT Quick Ticker</div>
+          <h1 class="title">Daily Telegram Watch</h1>
+          <div class="subtitle">Schneller täglicher Telegram-/OSINT-Watch · Keine abschließende Verifikation</div>
+        </div>
+        <div class="ticker-stamp">MOWLSINT FAST TICKER</div>
+      </header>
+      <div class="ticker-bar"><b>NOW</b><div class="crawl">${esc(crawl)}</div><div class="time">${esc(time)}</div></div>
+      <div class="report-meta">
+        <div class="meta-box"><div class="meta-k">Watch date</div><div class="meta-v">${esc(fmtDate(date))}</div></div>
+        <div class="meta-box"><div class="meta-k">Coverage</div><div class="meta-v">${esc(coverage)}</div></div>
+        <div class="meta-box"><div class="meta-k">Items</div><div class="meta-v">${contentSections.length}</div></div>
+        <div class="meta-box"><div class="meta-k">High priority</div><div class="meta-v">${highCount}</div></div>
+      </div>
+      <div class="notice"><strong>Automated / fast OSINT product</strong><span>Öffentlich zugängliche Telegram- und Webquellen. Quellenperspektive, Reposts und Attribution sind getrennt zu bewerten. Kritische Angaben vor operativer Nutzung an Primärquellen prüfen.</span></div>`;
+
+    if(mainSummary){
+      html += `<section class="summary"><h2>${esc(mainSummary.title)}</h2><div class="summary-body">${linesToHtml(mainSummary.lines)}</div></section>`;
+    } else {
+      const ht = h.filter(x=>x && !/^(MARITIME|DAILY|REPORTING PERIOD|AREA|AREAS|Coverage)/i.test(x));
+      if(ht.length) html += `<section class="summary"><h2>Watch summary</h2><div class="summary-body">${linesToHtml(ht)}</div></section>`;
+    }
+
+    for(const s of contentSections){
+      const pr=getPriority(s.lines), st=getStatus(s.lines);
+      const tags=[];
+      if(pr) tags.push(`<span class="tag ${tagClass(pr)}">Priority: ${esc(pr)}</span>`);
+      if(st) tags.push(`<span class="tag status">${esc(st)}</span>`);
+      html += `<section class="section">
+        <div class="section-head"><div class="section-num">${esc(s.num || '•')}</div><div class="section-title">${esc(s.title)}</div></div>
+        ${tags.length?`<div class="tags">${tags.join('')}</div>`:''}
+        <div class="section-content">${linesToHtml(s.lines)}</div>
+      </section>`;
+    }
+
+    html += `<footer class="footer"><div>DAILY TELEGRAM WATCH · Public Telegram / OSINT quick product · Analyst verification required</div><div>${esc(date || '')}${time && time!=='–' ? ' · '+esc(time):''}</div></footer>`;
+    report.innerHTML=html;
+    localStorage.setItem('dailyTelegramWatchText', input.value);
+  }
+
+  function downloadBlob(content,type,name){
+    const blob=new Blob([content],{type});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1200);
+  }
+  function markdown(){
+    const text=cleanRaw(input.value);
+    if(!text) return '';
+    const lines=text.split('\n');
+    const out=[];
+    let titleAdded=false;
+    for(const raw of lines){
+      const line=raw.trimEnd();
+      if(stripSeparator(line)) continue;
+      if(/^MARITIME TELEGRAM \/ OSINT WATCH/i.test(line) || /^DAILY TELEGRAM WATCH/i.test(line)){
+        if(!titleAdded){out.push('# Daily Telegram Watch');titleAdded=true;} continue;
+      }
+      const m=line.match(/^(\d{2})\s*\|\s*(.*)$/);
+      if(m){out.push(`\n## ${m[1]} | ${m[2]}`);continue;}
+      if(/^(EXECUTIVE SUMMARY|OVERALL ASSESSMENT|FINAL ASSESSMENT|TELEGRAM \/ OSINT SOURCE CHECK|TELEGRAM OSINT|SOURCE COVERAGE|WATCH ASSESSMENT|NEW SOURCE DISCOVERY|OTHER EUROPEAN SEA AREAS)$/i.test(line.trim())){out.push(`\n## ${line.trim()}`);continue;}
+      if(isSubheading(line) && line.trim().length<74){out.push(`\n### ${line.trim()}`);continue;}
+      out.push(line);
+    }
+    if(!titleAdded) out.unshift('# Daily Telegram Watch','');
+    return out.join('\n').replace(/\n{4,}/g,'\n\n\n').trim()+'\n';
+  }
+
+  $('#renderBtn').addEventListener('click',render);
+  $('#pasteBtn').addEventListener('click',async()=>{try{input.value=await navigator.clipboard.readText();dateField.value='';timeField.value='';render();}catch(e){alert('Zwischenablage konnte nicht gelesen werden. Bitte mit Strg+V einfügen.');}});
+  $('#copyBtn').addEventListener('click',async()=>{const t=cleanRaw(input.value); if(!t)return; try{await navigator.clipboard.writeText(t);}catch(e){input.select();document.execCommand('copy');}});
+  $('#mdBtn').addEventListener('click',()=>{const md=markdown();if(md)downloadBlob(md,'text/markdown;charset=utf-8',filename('md'));});
+  function openPdfPrintView(){
+    render();
+    const pdfTitle=filename('pdf').replace('.pdf','');
+    const styles=[...document.querySelectorAll('style')].map(x=>x.textContent).join('\n');
+    const popup=window.open('', '_blank');
+
+    if(!popup){
+      // Popup blockers can prevent the clean print window. In that case print the current page.
+      const oldTitle=document.title;
+      document.title=pdfTitle;
+      window.print();
+      document.title=oldTitle;
+      return;
+    }
+
+    const safeTitle=pdfTitle.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    popup.document.open();
+    popup.document.write(`<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${safeTitle}</title>
+<style>${styles}</style>
+<style>
+  html,body{background:#fff!important;margin:0!important;padding:0!important;}
+  body{font-family:"Courier New",Courier,monospace!important;color:#1f2528!important;}
+  .sheet{display:block!important;width:100%!important;max-width:none!important;margin:0!important;box-shadow:none!important;border:0!important;min-height:0!important;background:#fff!important;}
+  .sheet-inner{display:block!important;width:100%!important;padding:0!important;background:#fff!important;color:#1f2528!important;}
+  @media screen{body{padding:11mm 11mm 13mm!important;}.sheet{max-width:188mm!important;margin:0 auto!important;}}
+</style>
+</head>
+<body>
+<article class="sheet"><div class="sheet-inner">${report.innerHTML}</div></article>
+</body>
+</html>`);
+    popup.document.close();
+    popup.focus();
+
+    const doPrint=()=>setTimeout(()=>{
+      try{ popup.print(); }catch(e){ console.error(e); }
+    },350);
+
+    if(popup.document.readyState==='complete') doPrint();
+    else popup.addEventListener('load',doPrint,{once:true});
+  }
+
+  $('#pdfBtn').addEventListener('click',openPdfPrintView);
+  $('#clearBtn').addEventListener('click',()=>{input.value='';dateField.value='';timeField.value='';localStorage.removeItem('dailyTelegramWatchText');render();});
+  dateField.addEventListener('change',render); timeField.addEventListener('change',render);
+
+  const saved=localStorage.getItem('dailyTelegramWatchText');
+  if(saved){input.value=saved;render();}
+})();
+</script>
+</body>
+</html>

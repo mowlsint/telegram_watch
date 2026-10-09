@@ -72,6 +72,7 @@
   .summary{margin:0 0 18px;padding:13px 14px;border:1px solid var(--line);background:#f8f6ed}
   .summary h2,.section h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 9px;color:#2a3032}
   .summary-body{font-size:12px;line-height:1.58}
+  .summary + .summary{margin-top:-10px}
 
   .section{border-top:1px solid var(--line);padding:15px 0 4px;break-inside:avoid-page}
   .section-head{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;margin-bottom:8px}
@@ -212,7 +213,7 @@
   }
   function stripSeparator(line) { return /^[-=]{8,}$/.test(line.trim()); }
   function isMainHeading(line) {
-    return /^\d{2}\s*\|\s*/.test(line) || /^(EXECUTIVE SUMMARY|OVERALL ASSESSMENT|FINAL ASSESSMENT|TELEGRAM \/ OSINT SOURCE CHECK|TELEGRAM OSINT|SOURCE COVERAGE|WATCH ASSESSMENT|NEW SOURCE DISCOVERY|OTHER EUROPEAN SEA AREAS)$/i.test(line.trim());
+    return /^\d{2}\s*\|\s*/.test(line) || /^(EXECUTIVE SUMMARY(?:\s*[-–—]\s*(?:DEUTSCH|ENGLISH))?|OVERALL ASSESSMENT|FINAL ASSESSMENT|TELEGRAM \/ OSINT SOURCE CHECK|TELEGRAM OSINT|SOURCE COVERAGE|WATCH ASSESSMENT|NEW SOURCE DISCOVERY|OTHER EUROPEAN SEA AREAS)$/i.test(line.trim());
   }
   function isSubheading(line) {
     const t=line.trim();
@@ -304,8 +305,8 @@
     const time=timeField.value || detectTime(text) || '–';
     const coverage=findHeaderValue(h,['Coverage','AREA','AREAS']) || h.find(x=>/North Sea|Baltic|Black Sea/i.test(x)) || 'Europe / Maritime OSINT';
     const period=findHeaderValue(h,['REPORTING PERIOD','Reporting period']) || 'Daily watch';
-    const mainSummary=parsed.sections.find(s=>/EXECUTIVE SUMMARY|OVERALL ASSESSMENT/i.test(s.title));
-    const contentSections=parsed.sections.filter(s=>s!==mainSummary);
+    const summarySections=parsed.sections.filter(s=>/^(EXECUTIVE SUMMARY(?:\s*[-–—]\s*(?:DEUTSCH|ENGLISH))?|OVERALL ASSESSMENT)$/i.test(s.title.trim()));
+    const contentSections=parsed.sections.filter(s=>!summarySections.includes(s));
     const highCount=contentSections.filter(s=>/high/i.test(getPriority(s.lines))).length;
     const firstHot=contentSections.find(s=>/very high|high/i.test(getPriority(s.lines))) || contentSections[0];
     const crawl=firstHot ? `${firstHot.num ? firstHot.num+' / ' : ''}${firstHot.title}` : 'Public Telegram / OSINT monitoring';
@@ -315,7 +316,7 @@
         <div>
           <div class="eyebrow">Magic Paws // Maritime OSINT Quick Ticker</div>
           <h1 class="title">Daily Telegram Watch</h1>
-          <div class="subtitle">Schneller täglicher Telegram-/OSINT-Watch · Keine abschließende Verifikation</div>
+          <div class="subtitle">Rapid daily Telegram/OSINT watch · No final verification</div>
         </div>
         <div class="ticker-stamp">MOWLSINT FAST TICKER</div>
       </header>
@@ -326,10 +327,12 @@
         <div class="meta-box"><div class="meta-k">Items</div><div class="meta-v">${contentSections.length}</div></div>
         <div class="meta-box"><div class="meta-k">High priority</div><div class="meta-v">${highCount}</div></div>
       </div>
-      <div class="notice"><strong>Automated / fast OSINT product</strong><span>Öffentlich zugängliche Telegram- und Webquellen. Quellenperspektive, Reposts und Attribution sind getrennt zu bewerten. Kritische Angaben vor operativer Nutzung an Primärquellen prüfen.</span></div>`;
+      <div class="notice"><strong>Automated / fast OSINT product</strong><span>Publicly accessible Telegram and web sources. Source perspective, reposts and attribution must be assessed separately. Verify critical information against primary sources before operational use.</span></div>`;
 
-    if(mainSummary){
-      html += `<section class="summary"><h2>${esc(mainSummary.title)}</h2><div class="summary-body">${linesToHtml(mainSummary.lines)}</div></section>`;
+    if(summarySections.length){
+      for(const summary of summarySections){
+        html += `<section class="summary"><h2>${esc(summary.title)}</h2><div class="summary-body">${linesToHtml(summary.lines)}</div></section>`;
+      }
     } else {
       const ht = h.filter(x=>x && !/^(MARITIME|DAILY|REPORTING PERIOD|AREA|AREAS|Coverage)/i.test(x));
       if(ht.length) html += `<section class="summary"><h2>Watch summary</h2><div class="summary-body">${linesToHtml(ht)}</div></section>`;
@@ -370,7 +373,7 @@
       }
       const m=line.match(/^(\d{2})\s*\|\s*(.*)$/);
       if(m){out.push(`\n## ${m[1]} | ${m[2]}`);continue;}
-      if(/^(EXECUTIVE SUMMARY|OVERALL ASSESSMENT|FINAL ASSESSMENT|TELEGRAM \/ OSINT SOURCE CHECK|TELEGRAM OSINT|SOURCE COVERAGE|WATCH ASSESSMENT|NEW SOURCE DISCOVERY|OTHER EUROPEAN SEA AREAS)$/i.test(line.trim())){out.push(`\n## ${line.trim()}`);continue;}
+      if(/^(EXECUTIVE SUMMARY(?:\s*[-–—]\s*(?:DEUTSCH|ENGLISH))?|OVERALL ASSESSMENT|FINAL ASSESSMENT|TELEGRAM \/ OSINT SOURCE CHECK|TELEGRAM OSINT|SOURCE COVERAGE|WATCH ASSESSMENT|NEW SOURCE DISCOVERY|OTHER EUROPEAN SEA AREAS)$/i.test(line.trim())){out.push(`\n## ${line.trim()}`);continue;}
       if(isSubheading(line) && line.trim().length<74){out.push(`\n### ${line.trim()}`);continue;}
       out.push(line);
     }

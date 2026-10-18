@@ -41,6 +41,11 @@
   .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
   button{border:1px solid #536067;background:#26343c;color:white;padding:10px 11px;border-radius:3px;cursor:pointer;font-weight:700;font-size:11px;letter-spacing:.03em}
   button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.6;cursor:wait}
+  .repo-settings{margin-top:16px;font-size:12px}
+  .repo-settings summary{cursor:pointer;color:var(--gold-2)}
+  .controls .hint a{color:var(--gold-2)}
+  #repoStatus{overflow-wrap:anywhere}
   button.primary{background:var(--gold);border-color:var(--gold);color:#13181b}
   button.wide{grid-column:1 / -1}
   .hint{font-size:10px;line-height:1.45;color:#8e999d;margin-top:10px}
@@ -158,9 +163,23 @@
       <button id="copyBtn">Text kopieren</button>
       <button id="mdBtn">.MD herunterladen</button>
       <button id="pdfBtn">PDF erstellen</button>
+      <button class="primary wide" id="repoSaveBtn">Im Repository speichern</button>
       <button class="wide" id="clearBtn">Leeren</button>
     </div>
     <div class="hint">PDF: Der Button öffnet eine saubere, eigenständige Druckansicht ohne Eingabefeld/Seitenlayout. Dort „Als PDF speichern“ wählen. Dadurch wird die zuvor leere PDF vermieden.</div>
+    <div class="hint" id="repoStatus" role="status" aria-live="polite"></div>
+    <details class="repo-settings" id="repoSettings">
+      <summary>GitHub einrichten</summary>
+      <label class="label" for="repoField">Repository</label>
+      <input id="repoField" value="mowlsint/telegram_watch" autocomplete="off" spellcheck="false" />
+      <label class="label" for="branchField">Branch</label>
+      <input id="branchField" value="main" autocomplete="off" spellcheck="false" />
+      <label class="label" for="tokenField">GitHub-Zugriffsschlüssel</label>
+      <input id="tokenField" type="password" autocomplete="off" spellcheck="false" placeholder="Fine-grained personal access token" />
+      <div class="hint">Einmal pro geöffnetem Tab eingeben. Der Schlüssel wird nur für Anfragen an GitHub verwendet und nicht dauerhaft gespeichert. <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">Schlüssel erstellen</a>: nur dieses Repository auswählen; „Contents: Read and write“ freigeben.</div>
+      <button id="forgetTokenBtn" type="button">Schlüssel entfernen</button>
+      <div class="hint">Ablage: watches/Jahr/Monat/. Jeder Klick erzeugt eine eigene Markdown-Datei; frühere Watches bleiben erhalten.</div>
+    </details>
   </aside>
 
   <main class="workspace">
@@ -352,7 +371,7 @@
 
     html += `<footer class="footer"><div>DAILY TELEGRAM WATCH · Public Telegram / OSINT quick product · Analyst verification required</div><div>${esc(date || '')}${time && time!=='–' ? ' · '+esc(time):''}</div></footer>`;
     report.innerHTML=html;
-    localStorage.setItem('dailyTelegramWatchText', input.value);
+    try{localStorage.setItem('dailyTelegramWatchText', input.value);}catch(e){/* Preview and repository saving also work without local storage. */}
   }
 
   function downloadBlob(content,type,name){
@@ -380,6 +399,69 @@
     if(!titleAdded) out.unshift('# Daily Telegram Watch','');
     return out.join('\n').replace(/\n{4,}/g,'\n\n\n').trim()+'\n';
   }
+
+  function repoStatus(message){ $('#repoStatus').textContent=message; }
+  async function saveToRepository(){
+    const button=$('#repoSaveBtn');
+    if(button.disabled) return;
+    if(!cleanRaw(input.value)){repoStatus('Bitte zuerst einen Watch-Text einfügen.');return;}
+    const repo=$('#repoField').value.trim();
+    const branch=$('#branchField').value.trim();
+    const token=$('#tokenField').value.trim();
+    if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) || !branch){
+      $('#repoSettings').open=true;repoStatus('Bitte Repository als Eigentümer/Name und einen Branch angeben.');return;
+    }
+    if(!token){
+      $('#repoSettings').open=true;$('#tokenField').focus();
+      repoStatus('Bitte einmal den GitHub-Zugriffsschlüssel eingeben und erneut speichern.');return;
+    }
+    button.disabled=true;button.textContent='Wird gespeichert …';
+    repoStatus('Watch wird an GitHub übertragen …');
+    try{
+      render();
+      // Snapshot the editor before the asynchronous request, including its metadata.
+      const date=dateField.value || detectDate(cleanRaw(input.value)) || new Date().toISOString().slice(0,10);
+      const time=timeField.value || detectTime(cleanRaw(input.value));
+      const savedAt=new Date().toISOString();
+      const unique=crypto.randomUUID();
+      const path=`watches/${date.slice(0,4)}/${date.slice(5,7)}/Daily_Telegram_Watch_${date}_${savedAt.replace(/[:.]/g,'-')}_${unique}.md`;
+      const content=`---\nwatch_date: ${JSON.stringify(date)}\nwatch_time: ${JSON.stringify(time)}\nsaved_at: ${JSON.stringify(savedAt)}\n---\n\n${markdown()}`;
+      const bytes=new TextEncoder().encode(content);
+      let binary='';
+      for(const byte of bytes) binary+=String.fromCharCode(byte);
+      const response=await fetch(`https://api.github.com/repos/${repo.split('/').map(encodeURIComponent).join('/')}/contents/${path.split('/').map(encodeURIComponent).join('/')}`,{
+        method:'PUT',headers:{
+          'Accept':'application/vnd.github+json','Authorization':`Bearer ${token}`,
+          'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'
+        },
+        body:JSON.stringify({message:`Archive Telegram Watch ${date} [skip ci]`,content:btoa(binary),branch}),
+        signal:AbortSignal.timeout(30000)
+      });
+      if(!response.ok){
+        const messages={401:'GitHub hat den Schlüssel abgelehnt. Bitte neu eingeben.',403:'Keine Schreibberechtigung. Token-Freigabe für Contents und Repository prüfen.',404:'Repository oder Branch nicht gefunden; auch die Token-Freigabe prüfen.',409:'GitHub meldet einen Konflikt. Bitte erneut speichern.',422:'GitHub konnte die Datei nicht anlegen. Branch und Repository-Einstellungen prüfen.'};
+        throw new Error(messages[response.status] || `Speichern fehlgeschlagen (HTTP ${response.status}).`);
+      }
+      // The UI constructs the link itself rather than trusting response HTML.
+      repoStatus('Gespeichert: ');
+      const link=document.createElement('a');
+      link.href=`https://github.com/${repo}/blob/${encodeURIComponent(branch)}/${path}`;
+      link.target='_blank';link.rel='noopener noreferrer';link.textContent=path;
+      $('#repoStatus').appendChild(link);
+      try{localStorage.setItem('dailyTelegramWatchRepo',JSON.stringify({repo,branch}));}catch(e){/* Saving succeeded even if local preferences are unavailable. */}
+    }catch(e){
+      repoStatus(e.name==='TimeoutError' || e instanceof TypeError
+        ? 'Keine Bestätigung von GitHub erhalten. Bitte im Repository prüfen, ob die Datei angelegt wurde, bevor du erneut speicherst.'
+        : e.message);
+    }finally{button.disabled=false;button.textContent='Im Repository speichern';}
+  }
+  $('#repoSaveBtn').addEventListener('click',saveToRepository);
+  $('#forgetTokenBtn').addEventListener('click',()=>{$('#tokenField').value='';repoStatus('Zugriffsschlüssel aus diesem Tab entfernt.');});
+  try{
+    const settings=JSON.parse(localStorage.getItem('dailyTelegramWatchRepo') || 'null');
+    if(settings && typeof settings.repo==='string' && typeof settings.branch==='string'){
+      $('#repoField').value=settings.repo;$('#branchField').value=settings.branch;
+    }
+  }catch(e){/* Defaults remain available if local storage is blocked. */}
 
   $('#renderBtn').addEventListener('click',render);
   $('#pasteBtn').addEventListener('click',async()=>{try{input.value=await navigator.clipboard.readText();dateField.value='';timeField.value='';render();}catch(e){alert('Zwischenablage konnte nicht gelesen werden. Bitte mit Strg+V einfügen.');}});
@@ -436,7 +518,8 @@
   $('#clearBtn').addEventListener('click',()=>{input.value='';dateField.value='';timeField.value='';localStorage.removeItem('dailyTelegramWatchText');render();});
   dateField.addEventListener('change',render); timeField.addEventListener('change',render);
 
-  const saved=localStorage.getItem('dailyTelegramWatchText');
+  let saved='';
+  try{saved=localStorage.getItem('dailyTelegramWatchText');}catch(e){/* Local draft storage is optional. */}
   if(saved){input.value=saved;render();}
 })();
 </script>
